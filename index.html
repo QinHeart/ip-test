@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>双线路 IP 测试</title>
+  <style>
+    :root{
+      --bg: #0b1020;
+      --card: rgba(255,255,255,0.08);
+      --card2: rgba(255,255,255,0.06);
+      --border: rgba(255,255,255,0.12);
+      --text: rgba(255,255,255,0.92);
+      --muted: rgba(255,255,255,0.65);
+      --muted2: rgba(255,255,255,0.45);
+      --ok: #4ade80;
+      --bad: #fb7185;
+      --warn: #fbbf24;
+      --btn: rgba(255,255,255,0.10);
+      --btnHover: rgba(255,255,255,0.16);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+      --shadow: 0 16px 50px rgba(0,0,0,0.35);
+      --r: 16px;
+    }
+    @media (prefers-color-scheme: light) {
+      :root{
+        --bg:#f7f8fb;
+        --card: rgba(0,0,0,0.04);
+        --card2: rgba(0,0,0,0.03);
+        --border: rgba(0,0,0,0.10);
+        --text: rgba(0,0,0,0.88);
+        --muted: rgba(0,0,0,0.60);
+        --muted2: rgba(0,0,0,0.45);
+        --btn: rgba(0,0,0,0.06);
+        --btnHover: rgba(0,0,0,0.10);
+        --shadow: 0 14px 40px rgba(0,0,0,0.12);
+      }
+    }
+    html, body { height: 100%; }
+    body{
+      margin:0;
+      font-family: var(--sans);
+      color: var(--text);
+      background:
+        radial-gradient(1200px 700px at 20% 10%, rgba(99,102,241,0.30), transparent 60%),
+        radial-gradient(1000px 600px at 80% 20%, rgba(34,197,94,0.18), transparent 55%),
+        radial-gradient(900px 600px at 60% 90%, rgba(244,63,94,0.14), transparent 55%),
+        var(--bg);
+    }
+    .wrap{
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 24px 18px 34px;
+    }
+    header{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    h1{
+      font-size: 20px;
+      margin: 0;
+      letter-spacing: 0.2px;
+    }
+    .sub{
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .meta{
+      text-align:right;
+      white-space:nowrap;
+      color: var(--muted2);
+      font-size: 12px;
+      padding-top: 4px;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      margin-top: 12px;
+    }
+    @media (min-width: 820px){
+      .grid{ grid-template-columns: 1fr 1fr; }
+    }
+    .card{
+      background: linear-gradient(180deg, var(--card), var(--card2));
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+      padding: 16px 16px 14px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      position: relative;
+      overflow: hidden;
+    }
+    .card:before{
+      content:"";
+      position:absolute;
+      inset:-1px;
+      background: radial-gradient(600px 140px at 20% 0%, rgba(255,255,255,0.12), transparent 55%);
+      pointer-events:none;
+    }
+    .titleRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom: 10px;
+      position: relative;
+      z-index: 1;
+    }
+    .badge{
+      font-size: 12px;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.04);
+    }
+    .kvs{
+      position: relative;
+      z-index: 1;
+      display:grid;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .kv{
+      display:grid;
+      grid-template-columns: 86px 1fr;
+      gap: 10px;
+      align-items: start;
+    }
+    .k{ color: var(--muted2); font-size: 12px; padding-top: 2px; }
+    .v{ color: var(--text); font-size: 14px; line-height: 1.45; }
+    .ip{
+      font-family: var(--mono);
+      font-size: 18px;
+      letter-spacing: 0.2px;
+    }
+    .rowBtns{
+      display:flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+      position: relative;
+      z-index: 1;
+    }
+    button{
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--btn);
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: 12px;
+      font-size: 13px;
+      transition: 120ms ease;
+    }
+    button:hover{ background: var(--btnHover); transform: translateY(-1px); }
+    button:active{ transform: translateY(0); }
+    button:disabled{
+      cursor:not-allowed;
+      opacity: 0.55;
+      transform:none;
+    }
+    .status{
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 10px;
+      position: relative;
+      z-index: 1;
+    }
+    .dot{
+      display:inline-block;
+      width:8px; height:8px;
+      border-radius: 50%;
+      margin-right: 6px;
+      background: rgba(255,255,255,0.35);
+      vertical-align: -1px;
+    }
+    .dot.ok{ background: var(--ok); }
+    .dot.bad{ background: var(--bad); }
+    .dot.warn{ background: var(--warn); }
+
+    .banner{
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.06);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+      margin-bottom: 14px;
+      display:none;
+    }
+    .banner strong{ color: var(--text); }
+    .banner .hint{
+      color: var(--muted2);
+      font-size: 12px;
+      margin-top: 6px;
+    }
+    code.inline{
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.06);
+    }
+    footer{
+      margin-top: 14px;
+      color: var(--muted2);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="banner" id="fileBanner">
+    <span class="dot warn"></span>
+    <strong>你正在用 file:// 方式打开。</strong> 这会导致部分 IP 接口因为 CORS/Origin 限制而失败（表现为“检测中…”或失败）。
+    <div class="hint">
+      推荐：把本页部署到 <span class="inline code">GitHub Pages</span> 后用 <span class="inline code">https://</span> 打开；或用本地 http 服务器打开。
+    </div>
+  </div>
+
+  <header>
+    <div>
+      <h1>双线路 IP 测试</h1>
+      <div class="sub">
+        分别访问“国内域名”和“国外域名”，观察你的直连出口 IP 与代理出口 IP 是否分流成功。
+      </div>
+    </div>
+    <div class="meta">
+      <div id="testedAt">最新测试：—</div>
+      <div style="margin-top:8px;">
+        <button id="btnRetest">重新测试</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- 国内 -->
+    <section class="card" id="cardCn">
+      <div class="titleRow">
+        <div style="font-weight:600;">国内出口（访问国内站点）</div>
+        <div class="badge" id="srcCn">source: myip.ipip.net / pconline</div>
+      </div>
+      <div class="kvs">
+        <div class="kv">
+          <div class="k">IP</div>
+          <div class="v ip" id="cnIp">检测中…</div>
+        </div>
+        <div class="kv">
+          <div class="k">位置</div>
+          <div class="v" id="cnLoc">—</div>
+        </div>
+        <div class="kv">
+          <div class="k">运营商</div>
+          <div class="v" id="cnIsp">—</div>
+        </div>
+      </div>
+      <div class="rowBtns">
+        <button id="cnCopyIp" disabled>复制 IP</button>
+        <button id="cnCopyJson" disabled>复制原始 JSON</button>
+      </div>
+      <div class="status" id="cnStatus"><span class="dot"></span>等待测试…</div>
+    </section>
+
+    <!-- 国外 -->
+    <section class="card" id="cardAbroad">
+      <div class="titleRow">
+        <div style="font-weight:600;">国外出口（访问国外站点）</div>
+        <div class="badge" id="srcAbroad">source: api.ip.sb / ipwho.is</div>
+      </div>
+      <div class="kvs">
+        <div class="kv">
+          <div class="k">IP</div>
+          <div class="v ip" id="abIp">检测中…</div>
+        </div>
+        <div class="kv">
+          <div class="k">位置</div>
+          <div class="v" id="abLoc">—</div>
+        </div>
+        <div class="kv">
+          <div class="k">运营商</div>
+          <div class="v" id="abIsp">—</div>
+        </div>
+        <div class="kv">
+          <div class="k">ASN</div>
+          <div class="v" id="abAsn">—</div>
+        </div>
+        <div class="kv">
+          <div class="k">时区</div>
+          <div class="v" id="abTz">—</div>
+        </div>
+      </div>
+      <div class="rowBtns">
+        <button id="abCopyIp" disabled>复制 IP</button>
+        <button id="abCopyJson" disabled>复制原始 JSON</button>
+      </div>
+      <div class="status" id="abStatus"><span class="dot"></span>等待测试…</div>
+    </section>
+  </div>
+
+  <footer>
+    <div>
+      <span class="dot ok"></span>提示：如果你用 v2ray 的“按域名分流”，一般会看到两个不同的 IP。
+      若两边 IP 相同，说明这两个域名可能走了同一路（直连或代理）。
+      你可以在规则里把 <span class="inline code">myip.ipip.net</span> / <span class="inline code">whois.pconline.com.cn</span> 归到直连，
+      把 <span class="inline code">api.ip.sb</span> / <span class="inline code">ipwho.is</span> 归到代理再试。
+    </div>
+    <div style="margin-top:8px;">
+      流量消耗：每次测试约 2 个 HTTPS 请求，返回都是很小的 JSON（通常几 KB 级），对流量基本可忽略。
+    </div>
+  </footer>
+</div>
+
+<script>
+  const el = (id) => document.getElementById(id);
+
+  const state = {
+    cnRaw: null,
+    abRaw: null,
+    cnSource: null,
+    abSource: null,
+  };
+
+  // ---- UI helpers ----
+  function setStatus(which, ok, msg){
+    const s = el(which + "Status");
+    const cls = ok === true ? "ok" : ok === false ? "bad" : "warn";
+    s.innerHTML = `<span class="dot ${cls}"></span>${msg}`;
+  }
+  function safeText(x){
+    if(x === null || x === undefined) return "—";
+    const s = String(x).trim();
+    return s ? s : "—";
+  }
+  function enableCopy(which, enabled){
+    el(which + "CopyIp").disabled = !enabled;
+    el(which + "CopyJson").disabled = !enabled;
+  }
+
+  // ---- network helpers ----
+  async function fetchJson(url, timeoutMs=6500){
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), timeoutMs);
+    const t0 = performance.now();
+    try{
+      const res = await fetch(url, { signal: controller.signal, cache: "no-store" });
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const ms = Math.round(performance.now() - t0);
+      return { json, ms };
+    } finally {
+      clearTimeout(t);
+    }
+  }
+
+  function jsonp(url, timeoutMs=6500){
+    return new Promise((resolve, reject) => {
+      const cb = "__cb_" + Math.random().toString(36).slice(2);
+      const t0 = performance.now();
+      const script = document.createElement("script");
+      const timer = setTimeout(() => {
+        cleanup();
+        reject(new Error("JSONP timeout"));
+      }, timeoutMs);
+
+      function cleanup(){
+        clearTimeout(timer);
+        if(script.parentNode) script.parentNode.removeChild(script);
+        try{ delete window[cb]; }catch(e){ window[cb] = undefined; }
+      }
+
+      window[cb] = (data) => {
+        const ms = Math.round(performance.now() - t0);
+        cleanup();
+        resolve({ json: data, ms });
+      };
+
+      const sep = url.includes("?") ? "&" : "?";
+      script.src = url + sep + "callback=" + cb;
+      script.onerror = () => {
+        cleanup();
+        reject(new Error("JSONP load error"));
+      };
+      document.head.appendChild(script);
+    });
+  }
+
+  async function firstSuccess(tasks){
+    let lastErr = null;
+    for(const t of tasks){
+      try{ return await t(); } catch(e){ lastErr = e; }
+    }
+    throw lastErr || new Error("all sources failed");
+  }
+
+  // ---- parsing helpers ----
+  function formatLocCN(parts){
+    const [country, region, city, district] = parts || [];
+    const arr = [city, district, region, country].filter(Boolean);
+    return arr.length ? arr.join(" · ") : "—";
+  }
+
+  function guessISP(text){
+    if(!text) return "—";
+    const s = String(text);
+    const patterns = [
+      "电信","联通","移动","广电","铁通","教育网","长城宽带","鹏博士",
+      "阿里云","腾讯云","华为云","百度智能云","天翼云","金山云",
+      "Amazon","AWS","Google","Microsoft","Cloudflare","DigitalOcean","Linode","OVH"
+    ];
+    for(const p of patterns){
+      if(s.includes(p)) return p;
+    }
+    return "—";
+  }
+
+  // ---- tests ----
+  async function testCN(){
+    enableCopy("cn", false);
+    el("cnIp").textContent = "检测中…";
+    el("cnLoc").textContent = "—";
+    el("cnIsp").textContent = "—";
+    setStatus("cn", null, "正在请求国内接口…");
+
+    const result = await firstSuccess([
+      // 主：ipip（JSON）
+      async () => {
+        const { json, ms } = await fetchJson("https://myip.ipip.net/json", 6500);
+        const ip = json?.data?.ip;
+        const locArr = json?.data?.location || [];
+        const isp = locArr?.[4];
+        return {
+          source: "myip.ipip.net",
+          raw: json,
+          parsed: {
+            ip: safeText(ip),
+            loc: formatLocCN(locArr),
+            isp: safeText(isp),
+          },
+          ms
+        };
+      },
+      // 备：太平洋电脑网（JSONP，兼容性更强）
+      async () => {
+        const { json, ms } = await jsonp("https://whois.pconline.com.cn/ipJson.jsp?json=true", 6500);
+        // 典型字段：ip, pro, city, addr...
+        const ip = json?.ip;
+        const loc = [json?.city, json?.pro].filter(Boolean).join(" · ") || json?.addr || "—";
+        const isp = guessISP(json?.addr);
+        return {
+          source: "whois.pconline.com.cn",
+          raw: json,
+          parsed: { ip: safeText(ip), loc: safeText(loc), isp: safeText(isp) },
+          ms
+        };
+      }
+    ]);
+
+    state.cnRaw = result.raw;
+    state.cnSource = result.source;
+    el("cnIp").textContent = result.parsed.ip;
+    el("cnLoc").textContent = result.parsed.loc;
+    el("cnIsp").textContent = result.parsed.isp;
+    setStatus("cn", true, `国内接口成功（${result.source} · ${result.ms} ms）`);
+    enableCopy("cn", true);
+  }
+
+  async function testAbroad(){
+    enableCopy("ab", false);
+    el("abIp").textContent = "检测中…";
+    el("abLoc").textContent = "—";
+    el("abIsp").textContent = "—";
+    el("abAsn").textContent = "—";
+    el("abTz").textContent = "—";
+    setStatus("ab", null, "正在请求国外接口…");
+
+    const result = await firstSuccess([
+      // 主：ip.sb
+      async () => {
+        const { json, ms } = await fetchJson("https://api.ip.sb/geoip", 6500);
+        const ip = json?.ip;
+        const loc = [json?.city, json?.region, json?.country].filter(Boolean).join(" · ");
+        const isp = json?.isp || json?.organization;
+        const asn = json?.asn ? `AS${json.asn}${json?.asn_organization ? " · " + json.asn_organization : ""}` : "—";
+        const tz = json?.timezone;
+        return {
+          source: "api.ip.sb",
+          raw: json,
+          parsed: { ip: safeText(ip), loc: safeText(loc), isp: safeText(isp), asn: safeText(asn), tz: safeText(tz) },
+          ms
+        };
+      },
+      // 备：ipwho.is
+      async () => {
+        const { json, ms } = await fetchJson("https://ipwho.is/", 6500);
+        if(json?.success === false) throw new Error(json?.message || "ipwho.is error");
+        const ip = json?.ip;
+        const loc = [json?.city, json?.region, json?.country].filter(Boolean).join(" · ");
+        const isp = json?.connection?.isp || json?.isp || json?.org;
+        const asn = json?.connection?.asn ? `AS${json.connection.asn}${json?.connection?.org ? " · " + json.connection.org : ""}` : "—";
+        const tz = json?.timezone?.id || json?.timezone;
+        return {
+          source: "ipwho.is",
+          raw: json,
+          parsed: { ip: safeText(ip), loc: safeText(loc), isp: safeText(isp), asn: safeText(asn), tz: safeText(tz) },
+          ms
+        };
+      }
+    ]);
+
+    state.abRaw = result.raw;
+    state.abSource = result.source;
+
+    el("abIp").textContent = result.parsed.ip;
+    el("abLoc").textContent = result.parsed.loc;
+    el("abIsp").textContent = result.parsed.isp;
+    el("abAsn").textContent = result.parsed.asn;
+    el("abTz").textContent = result.parsed.tz;
+    setStatus("ab", true, `国外接口成功（${result.source} · ${result.ms} ms）`);
+    enableCopy("ab", true);
+  }
+
+  // ---- clipboard ----
+  async function copyText(text){
+    if(!text || text === "—" || text === "失败" || text.includes("检测中")) return false;
+    try{
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    }
+  }
+
+  function bindCopy(){
+    el("cnCopyIp").addEventListener("click", async () => {
+      const ok = await copyText(el("cnIp").textContent.trim());
+      setStatus("cn", ok ? true : false, ok ? "已复制国内 IP" : "复制失败（无可复制内容/权限限制）");
+    });
+    el("abCopyIp").addEventListener("click", async () => {
+      const ok = await copyText(el("abIp").textContent.trim());
+      setStatus("ab", ok ? true : false, ok ? "已复制国外 IP" : "复制失败（无可复制内容/权限限制）");
+    });
+    el("cnCopyJson").addEventListener("click", async () => {
+      const raw = state.cnRaw ? JSON.stringify({ source: state.cnSource, raw: state.cnRaw }, null, 2) : "";
+      const ok = raw ? await copyText(raw) : false;
+      setStatus("cn", ok ? true : false, ok ? "已复制国内原始 JSON" : "无数据可复制");
+    });
+    el("abCopyJson").addEventListener("click", async () => {
+      const raw = state.abRaw ? JSON.stringify({ source: state.abSource, raw: state.abRaw }, null, 2) : "";
+      const ok = raw ? await copyText(raw) : false;
+      setStatus("ab", ok ? true : false, ok ? "已复制国外原始 JSON" : "无数据可复制");
+    });
+  }
+
+  async function run(){
+    // file:// 提示
+    if(location.protocol === "file:"){
+      el("fileBanner").style.display = "block";
+    }
+
+    const now = new Date();
+    el("testedAt").textContent = "最新测试：" + now.toLocaleString();
+
+    // 并发跑，互不影响
+    const p1 = testCN().catch(e => {
+      state.cnRaw = null; state.cnSource = null;
+      el("cnIp").textContent = "失败";
+      setStatus("cn", false, `国内接口失败：${e?.message || e}`);
+      enableCopy("cn", false);
+    });
+
+    const p2 = testAbroad().catch(e => {
+      state.abRaw = null; state.abSource = null;
+      el("abIp").textContent = "失败";
+      setStatus("ab", false, `国外接口失败：${e?.message || e}`);
+      enableCopy("ab", false);
+    });
+
+    await Promise.allSettled([p1, p2]);
+  }
+
+  el("btnRetest").addEventListener("click", () => run());
+  bindCopy();
+  run();
+</script>
+</body>
+</html>
